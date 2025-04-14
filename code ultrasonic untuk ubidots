@@ -4,7 +4,7 @@
 const char* ssid = "malioboro";
 const char* password = "allahuakbar";
 const char* ubidotsToken = "BBUS-Y5s7CObAKhExn20yRnu9kKoGYTXnBB"; // Token Ubidots kamu
-const char* deviceLabel = "tempat_sampah";
+const char* deviceLabel = "RGF_BAKSO";
 
 const int trigOrganik = 14, echoOrganik = 27;
 const int trigAnorganik = 13, echoAnorganik = 12;
