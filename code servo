@@ -1,0 +1,33 @@
+#include <ESP32Servo.h>
+
+Servo myservo;
+int servoPin = 33;
+
+unsigned long detectionTime = 0; // Waktu saat terakhir mendeteksi '1'
+unsigned long holdDuration = 2000; // Tahan posisi 90 derajat selama 2 detik
+
+bool isHolding = false; // Apakah sedang dalam masa penahanan 2 detik
+
+void setup() {
+  Serial.begin(9600);
+  myservo.attach(servoPin);
+  myservo.write(0); // Posisi awal servo
+}
+
+void loop() {
+  if (Serial.available()) {
+    char command = Serial.read();
+
+    if (command == '1') {
+      myservo.write(90);
+      detectionTime = millis();  // Catat waktu deteksi
+      isHolding = true;
+    }
+  }
+
+  // Jika sedang menahan, cek apakah waktu tahan sudah selesai
+  if (isHolding && (millis() - detectionTime > holdDuration)) {
+    myservo.write(0);     // Kembali ke posisi 0 setelah 2 detik
+    isHolding = false;
+  }
+}
