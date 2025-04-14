@@ -1,0 +1,98 @@
+#include <WiFi.h>
+#include <HTTPClient.h>
+
+const char* ssid = "malioboro";
+const char* password = "allahuakbar";
+const char* ubidotsToken = "BBUS-Y5s7CObAKhExn20yRnu9kKoGYTXnBB"; // Token Ubidots kamu
+const char* deviceLabel = "tempat_sampah";
+
+const int trigOrganik = 14, echoOrganik = 27;
+const int trigAnorganik = 13, echoAnorganik = 12;
+const int trigB3 = 23, echoB3 = 22;
+
+long durasi;
+float jarak;
+
+int countOrganik = 0;
+int countAnorganik = 0;
+int countB3 = 0;
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(ssid, password);
+
+  pinMode(trigOrganik, OUTPUT);
+  pinMode(echoOrganik, INPUT);
+  pinMode(trigAnorganik, OUTPUT);
+  pinMode(echoAnorganik, INPUT);
+  pinMode(trigB3, OUTPUT);
+  pinMode(echoB3, INPUT);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("Terhubung ke WiFi!");
+}
+
+float getDistance(int trigPin, int echoPin) {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  durasi = pulseIn(echoPin, HIGH, 30000); // Timeout 30ms
+  jarak = durasi * 0.034 / 2;
+  return jarak;
+}
+
+void sendToUbidots(int organik, int anorganik, int b3) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String url = "http://industrial.api.ubidots.com/api/v1.6/devices/RGF_BAKSO";
+
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-Auth-Token", ubidotsToken);
+
+    String json = "{\"sampah_organik\": " + String(organik) + 
+                  ", \"sampah_anorganik\": " + String(anorganik) + 
+                  ", \"sampah_b3\": " + String(b3) + "}";
+
+    int httpResponseCode = http.POST(json);
+    Serial.println("Data terkirim: " + json);
+    http.end();
+  } else {
+    Serial.println("WiFi tidak terhubung");
+  }
+}
+
+void loop() {
+  float distOrganik = getDistance(trigOrganik, echoOrganik);
+  float distAnorganik = getDistance(trigAnorganik, echoAnorganik);
+  float distB3 = getDistance(trigB3, echoB3);
+
+  if (distOrganik > 0 && distOrganik < 10) {
+    countOrganik++;
+    Serial.println("Sampah Organik Terdeteksi!");
+    delay(1000); // Anti double-count
+  }
+  if (distAnorganik > 0 && distAnorganik < 10) {
+    countAnorganik++;
+    Serial.println("Sampah Anorganik Terdeteksi!");
+    delay(1000);
+  }
+  if (distB3 > 0 && distB3 < 10) {
+    countB3++;
+    Serial.println("Sampah B3 Terdeteksi!");
+    delay(1000);
+  }
+
+  // Kirim data setiap 30 detik
+  static unsigned long lastSend = 0;
+  if (millis() - lastSend > 30000) {
+    sendToUbidots(countOrganik, countAnorganik, countB3);
+    lastSend = millis();
+  }
+}
